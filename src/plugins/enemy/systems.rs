@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::prelude::*;
 use rand::prelude::*;
 
 use crate::{
@@ -12,11 +12,10 @@ use super::{Enemy, EnemySpawnConfig};
 
 pub fn spawn_enemies(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     win_query: Query<&Window>,
     mut spawn_timer: ResMut<EnemySpawnConfig>,
     time: Res<Time>,
+    asset_server: Res<AssetServer>,
 ) {
     if let Ok(window) = win_query.get_single() {
         spawn_timer.timer.tick(time.delta());
@@ -30,6 +29,13 @@ pub fn spawn_enemies(
             let enemy_x = rng.gen::<f32>() * width - width / 2.;
             let enemy_y = rng.gen::<f32>() * height - height / 2.;
 
+            let mut transform = Transform::from_scale(Vec3::splat(2.0));
+
+            transform.translation.x = enemy_x;
+            transform.translation.y = enemy_y;
+
+            let texture_handle = asset_server.load("sprites/tile_0108.png");
+
             commands.spawn((
                 Name::new("Enemy"),
                 Enemy,
@@ -39,12 +45,9 @@ pub fn spawn_enemies(
                     damage: 45.0,
                     range: 1.0,
                 },
-                MaterialMesh2dBundle {
-                    mesh: meshes
-                        .add(shape::Quad::new(Vec2 { x: 8.0, y: 8.0 }).into())
-                        .into(),
-                    material: materials.add(ColorMaterial::from(Color::RED)),
-                    transform: Transform::from_translation(Vec3::new(enemy_x, enemy_y, 0.)),
+                SpriteBundle {
+                    texture: texture_handle,
+                    transform,
                     ..default()
                 },
             ));

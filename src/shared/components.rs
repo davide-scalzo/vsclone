@@ -17,6 +17,11 @@ pub struct Speed {
 }
 
 #[derive(Component, Reflect)]
+pub struct Damage {
+    pub value: f32,
+}
+
+#[derive(Component, Reflect)]
 pub struct Direction {
     pub x: f32,
     pub y: f32,

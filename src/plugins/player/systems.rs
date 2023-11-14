@@ -9,14 +9,15 @@ use crate::{
         enemy::Enemy,
         projectiles::{Projectile, ProjectileTimer},
     },
-    shared::components::{Attack, Direction, Health, Speed},
+    shared::{
+        components::{Attack, Damage, Direction, Health, Speed},
+        functions,
+    },
 };
 
-pub fn spawn_player(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-) {
+pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let texture_handle = asset_server.load("sprites/tile_0098.png");
+
     commands.spawn((
         Name::new("Player"),
         Player,
@@ -26,10 +27,9 @@ pub fn spawn_player(
             damage: 45.0,
             range: 100.0,
         },
-        MaterialMesh2dBundle {
-            mesh: meshes.add(shape::Circle::new(4.).into()).into(),
-            material: materials.add(ColorMaterial::from(Color::WHITE)),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.)),
+        SpriteBundle {
+            texture: texture_handle,
+            transform: Transform::from_scale(Vec3::splat(2.0)),
             ..default()
         },
     ));
@@ -72,13 +72,6 @@ pub fn move_player(
     }
 }
 
-fn get_distance(a: &Transform, b: &Transform) -> f32 {
-    let x_dist = a.translation.x - b.translation.x;
-    let y_dist = a.translation.y - b.translation.y;
-
-    (x_dist * x_dist + y_dist * y_dist).sqrt()
-}
-
 pub fn shoot_enemies(
     mut commands: Commands,
     enemies_query: Query<&Transform, (With<Enemy>, Without<Player>)>,
@@ -87,6 +80,7 @@ pub fn shoot_enemies(
     time: Res<Time>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     shoot_timer.timer.tick(time.delta());
     if shoot_timer.timer.finished() {
@@ -94,7 +88,7 @@ pub fn shoot_enemies(
             let mut last_pos: Option<&Transform> = None;
             let mut last_dist: Option<f32> = None;
             for enemy_pos in enemies_query.iter() {
-                let distance = get_distance(enemy_pos, player_pos);
+                let distance = functions::get_distance(enemy_pos, player_pos);
 
                 if attack.range > distance {
                     match last_dist {
@@ -130,12 +124,15 @@ pub fn shoot_enemies(
                             x: normalized_vec.x,
                             y: normalized_vec.y,
                         },
+                        Damage {
+                            value: attack.damage,
+                        },
                         ProjectileTimer {
                             timer: Timer::new(Duration::from_secs(1), TimerMode::Once),
                         },
                         MaterialMesh2dBundle {
                             mesh: meshes.add(shape::Circle::new(2.).into()).into(),
-                            material: materials.add(ColorMaterial::from(Color::GREEN)),
+                            material: materials.add(ColorMaterial::from(Color::WHITE)),
                             transform: Transform::from_translation(Vec3::new(
                                 player_pos.translation.x,
                                 player_pos.translation.y,
@@ -144,6 +141,11 @@ pub fn shoot_enemies(
                             ..default()
                         },
                     ));
+
+                    commands.spawn(AudioBundle {
+                        source: asset_server.load("audio/footstep00.ogg"),
+                        ..default()
+                    });
                 }
             }
         }

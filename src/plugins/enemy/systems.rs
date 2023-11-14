@@ -1,75 +1,79 @@
+use std::time::Duration;
+
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use rand::prelude::*;
 
 use crate::{
     plugins::player::Player,
-    shared::components::{self, Position, Speed},
+    shared::components::{self, Speed},
 };
 
-use super::Enemy;
+use super::{Enemy, EnemySpawnConfig};
 
 pub fn spawn_enemies(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     win_query: Query<&Window>,
+    mut spawn_timer: ResMut<EnemySpawnConfig>,
+    time: Res<Time>,
 ) {
-    println!("Spawning enemies");
-
     if let Ok(window) = win_query.get_single() {
-        let width = window.width();
-        let height = window.height();
+        spawn_timer.timer.tick(time.delta());
 
-        let mut rng = rand::thread_rng();
+        if spawn_timer.timer.finished() {
+            let width = window.width();
+            let height = window.height();
 
-        for _ in 0..10 {
+            let mut rng = rand::thread_rng();
+
             let enemy_x = rng.gen::<f32>() * width - width / 2.;
             let enemy_y = rng.gen::<f32>() * height - height / 2.;
-
-            let position = components::Position {
-                x: enemy_x,
-                y: enemy_y,
-            };
 
             commands.spawn((
                 Name::new("Enemy"),
                 Enemy,
                 components::Speed { value: 100.0 },
                 components::Health { value: 80.0 },
+                components::Attack {
+                    damage: 45.0,
+                    range: 1.0,
+                },
                 MaterialMesh2dBundle {
                     mesh: meshes
                         .add(shape::Quad::new(Vec2 { x: 8.0, y: 8.0 }).into())
                         .into(),
                     material: materials.add(ColorMaterial::from(Color::RED)),
-                    transform: Transform::from_translation(Vec3::new(position.x, position.y, 0.)),
+                    transform: Transform::from_translation(Vec3::new(enemy_x, enemy_y, 0.)),
                     ..default()
                 },
-                position,
             ));
         }
     }
 }
 
+pub fn setup_enemy_timer(mut commands: Commands) {
+    commands.insert_resource(EnemySpawnConfig {
+        // create the repeating timer
+        timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating),
+    })
+}
+
 pub fn move_enemies(
-    mut enemy_query: Query<(&mut Position, &mut Transform, &Speed), (With<Enemy>, Without<Player>)>,
-    player_query: Query<&Position, (With<Player>, Without<Enemy>)>,
+    mut enemy_query: Query<(&mut Transform, &Speed), (With<Enemy>, Without<Player>)>,
+    player_query: Query<&Transform, (With<Player>, Without<Enemy>)>,
     time: Res<Time>,
 ) {
     if let Ok(target_location) = player_query.get_single() {
-        for (mut position, mut transform, speed) in enemy_query.iter_mut() {
-            let (x, y) = get_movement(&position, target_location);
-            position.x += x * speed.value * time.delta_seconds();
-            position.y += y * speed.value * time.delta_seconds();
+        for (mut transform, speed) in enemy_query.iter_mut() {
+            let raw_vector = Vec2 {
+                x: target_location.translation.x - transform.translation.x,
+                y: target_location.translation.y - transform.translation.y,
+            };
 
-            transform.translation.x = position.x;
-            transform.translation.y = position.y;
+            let vector = raw_vector.normalize_or_zero();
+            transform.translation.x += vector.x * speed.value * time.delta_seconds();
+            transform.translation.y += vector.y * speed.value * time.delta_seconds();
         }
     }
-}
-
-fn get_movement(origin: &Position, destination: &Position) -> (f32, f32) {
-    let x = destination.x - origin.x;
-    let y = destination.y - origin.y;
-    let magnitude = (x.powi(2) + y.powi(2)).sqrt();
-    (x / magnitude, y / magnitude)
 }

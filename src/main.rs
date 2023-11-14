@@ -10,6 +10,7 @@ fn main() {
             plugins::camera::CameraPlugin,
             plugins::player::PlayerPlugin,
             plugins::enemy::EnemyPlugin,
+            plugins::projectiles::ProjectilePlugin,
         ))
         .add_plugins(plugins::dev::DevPlugin)
         .run();

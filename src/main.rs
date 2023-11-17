@@ -12,6 +12,5 @@ fn main() {
             plugins::enemy::EnemyPlugin,
             plugins::projectiles::ProjectilePlugin,
         ))
-        .add_plugins(plugins::dev::DevPlugin)
         .run();
 }

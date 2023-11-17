@@ -1,4 +1,6 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 
 use crate::{
     plugins::enemy::Enemy,
@@ -8,7 +10,43 @@ use crate::{
     },
 };
 
-use super::{Projectile, ProjectileTimer};
+use super::{Projectile, ProjectileTimer, ShootProjectileEvent};
+
+pub fn spawn_projectile(
+    mut commands: Commands,
+    mut ev_levelup: EventReader<ShootProjectileEvent>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
+) {
+    for ev in ev_levelup.read() {
+        commands.spawn((
+            Name::new("Player Bullet"),
+            Projectile,
+            Speed(ev.speed),
+            ev.direction,
+            Damage(ev.damage),
+            ProjectileTimer {
+                timer: Timer::new(Duration::from_secs(1), TimerMode::Once),
+            },
+            MaterialMesh2dBundle {
+                mesh: meshes.add(shape::Circle::new(2.).into()).into(),
+                material: materials.add(ColorMaterial::from(Color::WHITE)),
+                transform: Transform::from_translation(Vec3::new(
+                    ev.from.translation.x,
+                    ev.from.translation.y,
+                    0.,
+                )),
+                ..default()
+            },
+        ));
+
+        commands.spawn(AudioBundle {
+            source: asset_server.load("audio/footstep00.ogg"),
+            ..default()
+        });
+    }
+}
 
 pub fn move_projectiles(
     mut commands: Commands,
@@ -30,8 +68,8 @@ pub fn move_projectiles(
         if timer.timer.finished() {
             commands.entity(entity).despawn_recursive()
         } else {
-            transform.translation.y += speed.value * time.delta_seconds() * direction.y;
-            transform.translation.x += speed.value * time.delta_seconds() * direction.x;
+            transform.translation.y += speed.0 * time.delta_seconds() * direction.y;
+            transform.translation.x += speed.0 * time.delta_seconds() * direction.x;
         }
     }
 }
@@ -46,7 +84,7 @@ pub fn check_hit(
             let dist = bullet_pos.distance_from(target_pos);
             if dist < 16.0 {
                 commands.entity(bullet).despawn();
-                health.value -= damage.value;
+                health.value -= damage.0;
                 if health.value <= 0.0 {
                     commands.entity(target).despawn();
                 }

@@ -1,16 +1,13 @@
 use std::time::Duration;
 
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::prelude::*;
 
 use super::{Player, ShootingTimer};
 
 use crate::{
-    plugins::{
-        enemy::Enemy,
-        projectiles::{Projectile, ProjectileTimer},
-    },
+    plugins::{enemy::Enemy, projectiles::ShootProjectileEvent},
     shared::{
-        components::{Attack, Damage, Direction, Health, Speed},
+        components::{Attack, Direction, Health, Speed},
         utils::{macros::unwrap_or_return, traits::DistanceFrom},
     },
 };
@@ -21,7 +18,7 @@ pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Name::new("Player"),
         Player,
-        Speed { value: 120.0 },
+        Speed(120.0),
         Health { value: 100.0 },
         Attack {
             damage: 45.0,
@@ -67,20 +64,17 @@ pub fn move_player(
     let vector = get_movement_from_input(input);
 
     if let Ok((mut transform, speed)) = query.get_single_mut() {
-        transform.translation.y += speed.value * time.delta_seconds() * vector.y;
-        transform.translation.x += speed.value * time.delta_seconds() * vector.x;
+        transform.translation.y += speed.0 * time.delta_seconds() * vector.y;
+        transform.translation.x += speed.0 * time.delta_seconds() * vector.x;
     }
 }
 
 pub fn shoot_enemies(
-    mut commands: Commands,
     enemies_query: Query<&Transform, (With<Enemy>, Without<Player>)>,
     player_query: Query<(&Transform, &Attack), (With<Player>, Without<Enemy>)>,
     mut shoot_timer: ResMut<ShootingTimer>,
     time: Res<Time>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    asset_server: Res<AssetServer>,
+    mut shoot_projectile: EventWriter<ShootProjectileEvent>,
 ) {
     shoot_timer.timer.tick(time.delta());
     if shoot_timer.timer.finished() {
@@ -107,7 +101,7 @@ pub fn shoot_enemies(
             let dist = unwrap_or_return!(target_dist);
             let target = unwrap_or_return!(target_pos);
 
-            if dist < attack.range {
+            if dist > attack.range {
                 return;
             }
 
@@ -117,37 +111,16 @@ pub fn shoot_enemies(
             };
 
             let normalized_vec = vec.normalize_or_zero();
-
-            commands.spawn((
-                Name::new("Player Bullet"),
-                Projectile,
-                Speed { value: 400.0 },
-                Direction {
+            let event = ShootProjectileEvent {
+                from: *player_pos,
+                direction: Direction {
                     x: normalized_vec.x,
                     y: normalized_vec.y,
                 },
-                Damage {
-                    value: attack.damage,
-                },
-                ProjectileTimer {
-                    timer: Timer::new(Duration::from_secs(1), TimerMode::Once),
-                },
-                MaterialMesh2dBundle {
-                    mesh: meshes.add(shape::Circle::new(2.).into()).into(),
-                    material: materials.add(ColorMaterial::from(Color::WHITE)),
-                    transform: Transform::from_translation(Vec3::new(
-                        player_pos.translation.x,
-                        player_pos.translation.y,
-                        0.,
-                    )),
-                    ..default()
-                },
-            ));
-
-            commands.spawn(AudioBundle {
-                source: asset_server.load("audio/footstep00.ogg"),
-                ..default()
-            });
+                speed: 500.0,
+                damage: 50.0,
+            };
+            shoot_projectile.send(event);
         }
     }
 }

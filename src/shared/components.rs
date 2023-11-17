@@ -1,27 +1,23 @@
 use bevy::prelude::*;
 
-#[derive(Component, Reflect)]
+#[derive(Component)]
 pub struct Health {
     pub value: f32,
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component)]
 pub struct Attack {
     pub damage: f32,
     pub range: f32,
 }
 
-#[derive(Component, Reflect)]
-pub struct Speed {
-    pub value: f32,
-}
+#[derive(Component)]
+pub struct Speed(pub f32);
 
-#[derive(Component, Reflect)]
-pub struct Damage {
-    pub value: f32,
-}
+#[derive(Component)]
+pub struct Damage(pub f32);
 
-#[derive(Component, Reflect)]
+#[derive(Component, Clone, Copy)]
 pub struct Direction {
     pub x: f32,
     pub y: f32,

@@ -39,7 +39,7 @@ pub fn spawn_enemies(
             commands.spawn((
                 Name::new("Enemy"),
                 Enemy,
-                components::Speed { value: 100.0 },
+                components::Speed(100.0),
                 components::Health { value: 80.0 },
                 components::Attack {
                     damage: 45.0,
@@ -75,8 +75,8 @@ pub fn move_enemies(
             };
 
             let vector = raw_vector.normalize_or_zero();
-            transform.translation.x += vector.x * speed.value * time.delta_seconds();
-            transform.translation.y += vector.y * speed.value * time.delta_seconds();
+            transform.translation.x += vector.x * speed.0 * time.delta_seconds();
+            transform.translation.y += vector.y * speed.0 * time.delta_seconds();
         }
     }
 }

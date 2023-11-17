@@ -11,7 +11,7 @@ use crate::{
     },
     shared::{
         components::{Attack, Damage, Direction, Health, Speed},
-        functions,
+        utils::DistanceFrom,
     },
 };
 
@@ -88,7 +88,7 @@ pub fn shoot_enemies(
             let mut last_pos: Option<&Transform> = None;
             let mut last_dist: Option<f32> = None;
             for enemy_pos in enemies_query.iter() {
-                let distance = functions::get_distance(enemy_pos, player_pos);
+                let distance = enemy_pos.distance_from(&player_pos);
 
                 if attack.range > distance {
                     match last_dist {

@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
-    plugins::{enemy::Enemy, player::Player},
+    plugins::enemy::Enemy,
     shared::{
         components::{Damage, Direction, Health, Speed},
-        functions,
+        utils::DistanceFrom,
     },
 };
 
@@ -43,7 +43,7 @@ pub fn check_hit(
 ) {
     for (bullet, bullet_pos, damage) in bullets_query.iter() {
         for (target, mut health, target_pos) in targets_query.iter_mut() {
-            let dist = functions::get_distance(bullet_pos, target_pos);
+            let dist = bullet_pos.distance_from(target_pos);
             if dist < 16.0 {
                 commands.entity(bullet).despawn();
                 health.value -= damage.value;

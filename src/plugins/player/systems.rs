@@ -11,7 +11,7 @@ use crate::{
     },
     shared::{
         components::{Attack, Damage, Direction, Health, Speed},
-        utils::DistanceFrom,
+        utils::{macros::unwrap_or_return, traits::DistanceFrom},
     },
 };
 
@@ -85,69 +85,69 @@ pub fn shoot_enemies(
     shoot_timer.timer.tick(time.delta());
     if shoot_timer.timer.finished() {
         if let Ok((player_pos, attack)) = player_query.get_single() {
-            let mut last_pos: Option<&Transform> = None;
-            let mut last_dist: Option<f32> = None;
+            let mut target_pos: Option<&Transform> = None;
+            let mut target_dist: Option<f32> = None;
             for enemy_pos in enemies_query.iter() {
                 let distance = enemy_pos.distance_from(&player_pos);
 
-                if attack.range > distance {
-                    match last_dist {
-                        None => {
-                            last_dist = Some(distance);
-                            last_pos = Some(enemy_pos);
-                        }
-                        Some(dist) => {
-                            if distance < dist {
-                                last_pos = Some(enemy_pos);
-                                last_dist = Some(distance);
-                            }
+                match target_dist {
+                    None => {
+                        target_dist = Some(distance);
+                        target_pos = Some(enemy_pos);
+                    }
+                    Some(dist) => {
+                        if distance < dist {
+                            target_pos = Some(enemy_pos);
+                            target_dist = Some(distance);
                         }
                     }
                 }
             }
 
-            match last_pos {
-                None => return,
-                Some(target) => {
-                    let vec = Vec2 {
-                        x: target.translation.x - player_pos.translation.x,
-                        y: target.translation.y - player_pos.translation.y,
-                    };
+            let dist = unwrap_or_return!(target_dist);
+            let target = unwrap_or_return!(target_pos);
 
-                    let normalized_vec = vec.normalize_or_zero();
-
-                    commands.spawn((
-                        Name::new("Player Bullet"),
-                        Projectile,
-                        Speed { value: 400.0 },
-                        Direction {
-                            x: normalized_vec.x,
-                            y: normalized_vec.y,
-                        },
-                        Damage {
-                            value: attack.damage,
-                        },
-                        ProjectileTimer {
-                            timer: Timer::new(Duration::from_secs(1), TimerMode::Once),
-                        },
-                        MaterialMesh2dBundle {
-                            mesh: meshes.add(shape::Circle::new(2.).into()).into(),
-                            material: materials.add(ColorMaterial::from(Color::WHITE)),
-                            transform: Transform::from_translation(Vec3::new(
-                                player_pos.translation.x,
-                                player_pos.translation.y,
-                                0.,
-                            )),
-                            ..default()
-                        },
-                    ));
-
-                    commands.spawn(AudioBundle {
-                        source: asset_server.load("audio/footstep00.ogg"),
-                        ..default()
-                    });
-                }
+            if dist < attack.range {
+                return;
             }
+
+            let vec = Vec2 {
+                x: target.translation.x - player_pos.translation.x,
+                y: target.translation.y - player_pos.translation.y,
+            };
+
+            let normalized_vec = vec.normalize_or_zero();
+
+            commands.spawn((
+                Name::new("Player Bullet"),
+                Projectile,
+                Speed { value: 400.0 },
+                Direction {
+                    x: normalized_vec.x,
+                    y: normalized_vec.y,
+                },
+                Damage {
+                    value: attack.damage,
+                },
+                ProjectileTimer {
+                    timer: Timer::new(Duration::from_secs(1), TimerMode::Once),
+                },
+                MaterialMesh2dBundle {
+                    mesh: meshes.add(shape::Circle::new(2.).into()).into(),
+                    material: materials.add(ColorMaterial::from(Color::WHITE)),
+                    transform: Transform::from_translation(Vec3::new(
+                        player_pos.translation.x,
+                        player_pos.translation.y,
+                        0.,
+                    )),
+                    ..default()
+                },
+            ));
+
+            commands.spawn(AudioBundle {
+                source: asset_server.load("audio/footstep00.ogg"),
+                ..default()
+            });
         }
     }
 }

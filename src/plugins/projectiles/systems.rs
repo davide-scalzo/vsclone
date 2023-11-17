@@ -4,7 +4,7 @@ use crate::{
     plugins::enemy::Enemy,
     shared::{
         components::{Damage, Direction, Health, Speed},
-        utils::DistanceFrom,
+        utils::traits::DistanceFrom,
     },
 };
 

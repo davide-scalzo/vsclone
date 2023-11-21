@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-// TODO make Stats a component?
+// TODO - make Stats a component?
 const BASE_DMG: f32 = 20.0;
 const CRIT_RATE: f32 = 0.20;
 const CRIT_DAMAGE: f32 = 1.5;

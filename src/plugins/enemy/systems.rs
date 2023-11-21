@@ -61,7 +61,7 @@ pub fn setup_enemy_timer(mut commands: Commands) {
     })
 }
 
-// TODO - figure out how to get enemies to not overlap
+// TODO - figure out how to get enemies to not overlap (boids-like movement?)
 pub fn move_enemies(
     mut enemy_query: Query<(&mut Transform, &Speed), (With<Enemy>, Without<Player>)>,
     player_query: Query<&Transform, (With<Player>, Without<Enemy>)>,
@@ -85,6 +85,7 @@ pub fn move_enemies(
     }
 }
 
+// TODO - Check how to implement fading and moving animations (maybe follow enemy transform?)
 pub fn show_damage_indicator(
     mut commands: Commands,
     mut ev_shoot_projectile: EventReader<EnemyHit>,
@@ -113,7 +114,7 @@ pub fn show_damage_indicator(
 
 pub fn despawn_damage_indicators(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut DamageIndicatorTimer)>,
+    mut query: Query<(Entity, &mut DamageIndicatorTimer)>, // TODO Check if despawning the identity fully clears all related components
     time: Res<Time>,
 ) {
     for (entity, mut dmg_timer) in query.iter_mut() {

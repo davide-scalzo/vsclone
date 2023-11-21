@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use rand::Rng;
 
 use super::{Player, ShootingTimer};
 
@@ -8,9 +9,14 @@ use crate::{
     plugins::{enemy::Enemy, projectiles::ShootProjectileEvent},
     shared::{
         components::{Attack, Direction, Health, Speed},
-        utils::{macros::unwrap_or_return, traits::DistanceFrom},
+        utils::macros::unwrap_or_return,
     },
 };
+
+// TODO make Stats a component?
+const BASE_DMG: f32 = 20.0;
+const CRIT_RATE: f32 = 0.20;
+const CRIT_DAMAGE: f32 = 1.5;
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     let texture_handle = asset_server.load("sprites/tile_0098.png");
@@ -82,7 +88,7 @@ pub fn shoot_enemies(
             let mut target_pos: Option<&Transform> = None;
             let mut target_dist: Option<f32> = None;
             for enemy_pos in enemies_query.iter() {
-                let distance = enemy_pos.distance_from(&player_pos);
+                let distance = enemy_pos.translation.distance(player_pos.translation);
 
                 match target_dist {
                     None => {
@@ -110,6 +116,16 @@ pub fn shoot_enemies(
                 y: target.translation.y - player_pos.translation.y,
             };
 
+            let mut rng = rand::thread_rng();
+
+            let test = rng.gen::<f32>();
+
+            let damage = if test <= CRIT_RATE {
+                BASE_DMG * CRIT_DAMAGE
+            } else {
+                BASE_DMG
+            };
+
             let normalized_vec = vec.normalize_or_zero();
             let event = ShootProjectileEvent {
                 from: *player_pos,
@@ -118,7 +134,7 @@ pub fn shoot_enemies(
                     y: normalized_vec.y,
                 },
                 speed: 500.0,
-                damage: 50.0,
+                damage,
             };
             shoot_projectile.send(event);
         }

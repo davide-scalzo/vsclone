@@ -8,7 +8,7 @@ use crate::{
     shared::components::{self, Speed},
 };
 
-use super::{Enemy, EnemySpawnConfig};
+use super::{DamageIndicatorTimer, Enemy, EnemyHit, EnemySpawnConfig};
 
 pub fn spawn_enemies(
     mut commands: Commands,
@@ -57,26 +57,70 @@ pub fn spawn_enemies(
 
 pub fn setup_enemy_timer(mut commands: Commands) {
     commands.insert_resource(EnemySpawnConfig {
-        // create the repeating timer
         timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating),
     })
 }
 
+// TODO - figure out how to get enemies to not overlap
 pub fn move_enemies(
     mut enemy_query: Query<(&mut Transform, &Speed), (With<Enemy>, Without<Player>)>,
     player_query: Query<&Transform, (With<Player>, Without<Enemy>)>,
     time: Res<Time>,
 ) {
     if let Ok(target_location) = player_query.get_single() {
-        for (mut transform, speed) in enemy_query.iter_mut() {
+        for (mut enemy_loc, enemy_speed) in enemy_query.iter_mut() {
             let raw_vector = Vec2 {
-                x: target_location.translation.x - transform.translation.x,
-                y: target_location.translation.y - transform.translation.y,
+                x: target_location.translation.x - enemy_loc.translation.x,
+                y: target_location.translation.y - enemy_loc.translation.y,
             };
 
             let vector = raw_vector.normalize_or_zero();
-            transform.translation.x += vector.x * speed.0 * time.delta_seconds();
-            transform.translation.y += vector.y * speed.0 * time.delta_seconds();
+            let new_loc = Vec3 {
+                x: enemy_loc.translation.x + vector.x * enemy_speed.0 * time.delta_seconds(),
+                y: enemy_loc.translation.y + vector.y * enemy_speed.0 * time.delta_seconds(),
+                z: 0.0,
+            };
+            enemy_loc.translation = new_loc;
+        }
+    }
+}
+
+pub fn show_damage_indicator(
+    mut commands: Commands,
+    mut ev_shoot_projectile: EventReader<EnemyHit>,
+) {
+    for ev in ev_shoot_projectile.read() {
+        let timer = DamageIndicatorTimer {
+            timer: Timer::new(Duration::from_millis(400), TimerMode::Once),
+        };
+        let text_bundle = Text2dBundle {
+            text: Text::from_section(
+                (ev.damage as u16).to_string(),
+                TextStyle {
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ),
+            transform: Transform {
+                translation: ev.location,
+                ..default()
+            },
+            ..default()
+        };
+        commands.spawn((Name::new("Damage indicator timer"), text_bundle, timer));
+    }
+}
+
+pub fn despawn_damage_indicators(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut DamageIndicatorTimer)>,
+    time: Res<Time>,
+) {
+    for (entity, mut dmg_timer) in query.iter_mut() {
+        dmg_timer.timer.tick(time.delta());
+
+        if dmg_timer.timer.finished() {
+            commands.entity(entity).despawn();
         }
     }
 }
